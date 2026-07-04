@@ -5387,9 +5387,9 @@ function generatePrintView() {
         </table>
         <div class="pdc-row" style="margin-top:3px;"><div class="pdc-label">단체보험</div><div class="pdc-val">${c.단체보험가입여부||'-'} · 법인명의 ${c.법인명의가입여부||'-'}</div></div>
         <div class="pdc-row" style="align-items:flex-start;"><div class="pdc-label">특허·인증</div><div class="pdc-val pdc-cert-grid">
-          <div>${certRow('기업부설연구소', c.기업부설연구소인정일자)}</div>
-          <div>${certRow('이노비즈', c.이노비즈인정일자)}</div>
-          <div>${certRow('메인비즈', c.메인비즈인정일자)}</div>
+          <div>${certRow('기업부설연구소', c.기업부설연구소_인정일자)}</div>
+          <div>${certRow('이노비즈', c.이노비즈_인정일자)}</div>
+          <div>${certRow('메인비즈', c.메인비즈_인정일자)}</div>
           <div>${certRow('벤처인증', (c.벤처인증여부 && !['N','0','X','아니오','없음'].includes(String(c.벤처인증여부).trim().toUpperCase())) ? c.벤처인증여부 : '')}</div>
           <div class="full">특허등록: ${patentN > 0 ? `<span class="hl-mark">${patentN}건</span>` : '0건'}</div>
         </div></div>
