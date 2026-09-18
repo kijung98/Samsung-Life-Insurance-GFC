@@ -13,6 +13,7 @@ DB 테이블 구조만 준비되어 있고, 입력 화면은 2단계에서 추�
 
 ```
 tax-refund-consent/
+├── index.html               루트 진입 페이지 (납세자/관리자 화면 선택) ⭐ GitHub Pages 기본주소용
 ├── README.md
 ├── sql/
 │   └── schema.sql          Supabase(Postgres) 테이블 생성 스크립트
@@ -84,8 +85,11 @@ tax-refund-consent/
 3. 저장소 메뉴에서 **Settings → Pages** 이동
 4. **Branch**: `main`(또는 `master`), 폴더는 `/ (root)` 선택 → **Save**
 5. 몇 분 후 `https://본인아이디.github.io/저장소이름/` 형태의 주소가 생성됩니다.
-6. 납세자용 주소: `https://본인아이디.github.io/저장소이름/taxpayer/index.html`
-   관리자용 주소: `https://본인아이디.github이름.github.io/저장소이름/admin/index.html`
+   이 기본주소로 접속하면 루트의 `index.html`이 열려 **납세자 화면 / 관리자 화면**을
+   선택하는 페이지가 바로 나타납니다.
+6. 납세자용 직접 주소: `https://본인아이디.github.io/저장소이름/taxpayer/index.html`
+   관리자용 직접 주소: `https://본인아이디.github.io/저장소이름/admin/index.html`
+   (QR코드에는 보통 납세자용 직접 주소를 사용합니다 — 7번 QR 생성 방법 참고)
 
 ---
 
