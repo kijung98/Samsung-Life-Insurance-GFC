@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>국세환급금 충당청구(동의)서 - 출력</title>
+<link rel="stylesheet" href="../css/common.css">
+<link rel="stylesheet" href="../css/print.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
+<script src="../js/pdf-export.js"></script>
+</head>
+<body class="print-body">
+
+<div class="print-toolbar no-print">
+  <button class="btn btn-secondary btn-sm" onclick="window.print()">인쇄 / PDF 저장</button>
+  <button class="btn btn-primary btn-sm" id="pdf-download-btn">PDF 다운로드</button>
+</div>
+
+<div class="print-page" id="print-root">
+  <p class="text-center text-muted">불러오는 중...</p>
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const submissionId = params.get('id');
+let currentReceptionNumber = '';
+
+function won(n) { return (Number(n) || 0).toLocaleString('ko-KR'); }
+function esc(v) { return v || ''; }
+
+function refundRows(items, maxRows) {
+  const rows = (items || []).slice(0, maxRows);
+  while (rows.length < maxRows) rows.push({});
+  return rows.map(it => `
+    <tr>
+      <td>${esc(it.tax_item)}</td>
+      <td>${esc(it.year_period)}</td>
+      <td>${won(it.total)}</td>
+      <td>${won(it.national_tax)}</td>
+      <td>${won(it.agri_edu_tax)}</td>
+      <td>${won(it.surcharge)}</td>
+      <td>${won(it.refund_surcharge)}</td>
+    </tr>`).join('');
+}
+
+function offsetRows(items, maxRows) {
+  const rows = (items || []).slice(0, maxRows);
+  while (rows.length < maxRows) rows.push({});
+  return rows.map(it => `
+    <tr>
+      <td>${esc(it.payment_no)}</td>
+      <td>${won(it.total)}</td>
+      <td>${won(it.national_tax)}</td>
+      <td>${won(it.agri_edu_tax)}</td>
+      <td>${won(it.surcharge)}</td>
+      <td>${esc(it.note)}</td>
+    </tr>`).join('');
+}
+
+function itemsTotal(items) {
+  return (items || []).reduce((s, it) => s + (Number(it.total) || 0), 0);
+}
+
+async function load() {
+  const root = document.getElementById('print-root');
+  if (!submissionId) { root.innerHTML = '<p>접수 ID가 없습니다.</p>'; return; }
+
+  try {
+    const row = await getSubmissionDetail(submissionId);
+    const f = (row.form_c_offset && row.form_c_offset[0]) || {};
+    currentReceptionNumber = row.reception_number;
+    render(row, f);
+  } catch (err) {
+    console.error(err);
+    root.innerHTML = '<p>데이터를 불러오지 못했습니다. js/config.js 설정을 확인해 주세요.</p>';
+  }
+}
+
+function render(row, f) {
+  const refundTotal = itemsTotal(f.refund_items);
+  const offsetTotal = itemsTotal(f.offset_items);
+  const balance = f.balance ?? (refundTotal - offsetTotal);
+  const today = new Date(row.created_at);
+
+  document.getElementById('print-root').innerHTML = `
+    <div class="print-doc-no">■ 국세기본법 시행규칙 [별지 제19호의2서식] &lt;개정 2021. 3. 16.&gt;</div>
+    <div class="print-title">국세환급금 충당청구(동의)서</div>
+
+    <table class="print-table">
+      <tr>
+        <th style="width:33%;">접수번호</th>
+        <th style="width:33%;">접수일</th>
+        <th>처리기간</th>
+      </tr>
+      <tr>
+        <td>${row.reception_number}</td>
+        <td>${today.toLocaleDateString('ko-KR')}</td>
+        <td></td>
+      </tr>
+    </table>
+
+    <table class="print-table">
+      <tr>
+        <td class="label-cell" rowspan="4" style="width:10%; text-align:center;">청구인</td>
+        <td class="label-cell" style="width:22%;">상호(법인명)</td>
+        <td style="width:33%;"></td>
+        <td class="label-cell" style="width:22%;">사업자등록번호</td>
+        <td>${esc(f.claimant_biz_no)}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">성명(대표자)</td>
+        <td>${esc(f.claimant_name)}</td>
+        <td class="label-cell">주민등록번호</td>
+        <td>${esc(f.claimant_rrn)}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">사업장 소재지</td>
+        <td colspan="3">(전화번호: ${esc(f.claimant_phone)})</td>
+      </tr>
+      <tr>
+        <td class="label-cell">주 소</td>
+        <td colspan="3">${esc(f.claimant_address)} (전화번호: ${esc(f.claimant_phone)})</td>
+      </tr>
+    </table>
+
+    <table class="print-table">
+      <tr>
+        <td class="label-cell" rowspan="5" style="width:9%; text-align:center;">국세환급금<br>내역</td>
+        <th>세목</th><th>연도·기분</th><th>계</th><th>내국세</th>
+        <th>농어촌특별세<br>교육세</th><th>가산금</th><th>환급가산금</th>
+      </tr>
+      ${refundRows(f.refund_items, 3)}
+      <tr>
+        <td colspan="2" style="text-align:center; font-weight:700;">계</td>
+        <td colspan="5" style="font-weight:700;">${won(refundTotal)}</td>
+      </tr>
+    </table>
+
+    <table class="print-table">
+      <tr>
+        <td class="label-cell" rowspan="5" style="width:9%; text-align:center;">충당청구<br>(동의)내역</td>
+        <th>전자납부번호</th><th>계</th><th>내국세</th>
+        <th>농어촌특별세<br>교육세</th><th>가산금</th><th>비고</th>
+      </tr>
+      ${offsetRows(f.offset_items, 3)}
+      <tr>
+        <td style="text-align:center; font-weight:700;">계</td>
+        <td colspan="4" style="font-weight:700;">${won(offsetTotal)}</td>
+        <td></td>
+      </tr>
+    </table>
+
+    <table class="print-table">
+      <tr><td class="label-cell" style="width:12%;">잔액</td><td>${won(balance)}</td></tr>
+    </table>
+
+    <p class="print-note" style="margin-top:10px;">
+      ※ 가산금은 구 국세기본법(법률 제16097호로 일부개정되기 전의 것을 말합니다) 제2조제5호에 따른
+      가산금으로 2020년 1월 1일 전 납세의무 분에 적용됩니다.
+    </p>
+
+    <p class="print-declaration">「국세기본법」 제51조에 따라 위와 같이 충당하여 주시기 바랍니다.</p>
+
+    <div class="text-center" style="margin-bottom:14px;">
+      ${today.getFullYear()}년　${today.getMonth()+1}월　${today.getDate()}일
+    </div>
+
+    <div class="print-sign-block">
+      <div class="print-sign-line">
+        청구인
+        ${f.claimant_signature
+          ? `<img class="print-sign-img" src="${f.claimant_signature}">`
+          : '&nbsp;&nbsp;&nbsp;&nbsp;(서명 또는 인)&nbsp;&nbsp;&nbsp;&nbsp;'}
+      </div>
+    </div>
+
+    <table class="print-table" style="margin-top:14px;">
+      <tr>
+        <td class="label-cell" style="width:14%;">대리인</td>
+        <td style="width:36%;">${esc(f.agent_name)} ${f.agent_name ? '(관계·직책: ' + esc(f.agent_relation) + ')' : ''}</td>
+        <td class="label-cell" style="width:14%;">전화번호</td>
+        <td>${esc(f.agent_phone)}</td>
+      </tr>
+    </table>
+
+    <div class="print-footer-office">세무서장 귀하</div>
+
+    <table class="print-table" style="margin-top:14px;">
+      <tr>
+        <td class="label-cell" style="width:14%;">첨부서류</td>
+        <td style="font-size:11.5px; line-height:1.7;">
+          1. 청구인 신분증 사본 1부<br>
+          2. 위임장 원본 1부<br>
+          ※ 1번과 2번 서류는 대리인이 신청하는 경우에만 제출합니다.
+        </td>
+        <td class="label-cell" style="width:12%; text-align:center;">수수료<br>없음</td>
+      </tr>
+    </table>
+
+    <p class="print-note" style="text-align:right; margin-top:10px;">210㎜×297㎜[백상지(80g/㎡) 또는 중질지(80g/㎡)]</p>
+
+    <p class="print-note" style="margin-top:12px; border-top:1px dashed #999; padding-top:8px;">
+      접수번호: ${row.reception_number} / 처리상태: ${row.status} / 시스템 출력일시: ${new Date().toLocaleString('ko-KR')}<br>
+      ※ 본 출력물은 온라인 동의서 시스템에서 생성된 참고용 서식입니다. 최종 법적 효력은 관할 세무서 확인 절차에 따릅니다.
+    </p>
+  `;
+}
+
+document.getElementById('pdf-download-btn').addEventListener('click', function () {
+  const filename = `국세환급금충당청구동의서_${currentReceptionNumber || '접수번호미상'}.pdf`;
+  downloadElementAsPdf(document.getElementById('print-root'), filename, this);
+});
+
+load();
+</script>
+</body>
+</html>
